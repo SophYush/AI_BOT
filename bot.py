@@ -1,3 +1,5 @@
+iimport os  # ✅ Ensure this is the first import
+import logging
 import queue
 import threading
 import time
@@ -5,6 +7,7 @@ import traceback
 from flask import Flask, request
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, Bot
 from telegram.ext import Application, ApplicationBuilder, CommandHandler, MessageHandler, CallbackContext, filters
+
 
 # Enable logging
 import logging
