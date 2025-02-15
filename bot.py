@@ -21,7 +21,8 @@ server = Flask(__name__)
 app = Application.builder().token(TOKEN).build()
 BOT = Bot(token=TOKEN)  # Manual API call bot
 
-# ✅ Background thread to process updates
+import traceback
+
 def process_updates():
     """Continuously process updates from the queue."""
     while True:
@@ -40,7 +41,9 @@ def process_updates():
             print("✅ Successfully processed update:", update)
         except Exception as e:
             print(f"⚠️ Error processing update: {e}")
-            time.sleep(1)  # Prevents excessive CPU usage
+            print(traceback.format_exc())  # 🔹 Print the full error traceback
+            time.sleep(1)
+
 
 # Start the background processing thread
 update_thread = threading.Thread(target=process_updates, daemon=True)
