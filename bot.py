@@ -17,6 +17,15 @@ WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # Your Render service URL
 # Initialize Flask
 server = Flask(__name__)
 
+@server.route('/webhook', methods=['POST'])
+def webhook():
+    """Handle incoming Telegram updates."""
+    update = request.get_json()
+    print("Received update:", update)  # Debugging output
+    update_obj = Update.de_json(update, app.bot)
+    app.update_queue.put(update_obj)
+    return {"status": "ok"}
+
 # Initialize Telegram bot application
 app = Application.builder().token(TOKEN).build()
 
