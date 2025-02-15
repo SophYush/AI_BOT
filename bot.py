@@ -1,7 +1,9 @@
 import os
 import logging
+import threading
+import time
 from flask import Flask, request
-from telegram import Update
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Application, ApplicationBuilder, CommandHandler, MessageHandler, CallbackContext, filters
 
 # Enable logging
@@ -12,43 +14,50 @@ TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TOKEN:
     raise ValueError("TELEGRAM_BOT_TOKEN is missing. Set it in environment variables.")
 
-# ✅ First, initialize Flask BEFORE using it
-server = Flask(__name__)  # Define Flask app here
+# ✅ Initialize Flask before using it
+server = Flask(__name__)
 
-# ✅ Then initialize the Telegram bot
+# ✅ Initialize Telegram bot
 app = Application.builder().token(TOKEN).build()
 
-# Command handlers
-async def start(update: Update, context: CallbackContext):
-    await update.message.reply_text("Hello! Your bot is working!")
+# ✅ Background thread to process updates
+def process_updates():
+    while True:
+        try:
+            update = app.update_queue.get_nowait()
+            app.process_update(update)
+            print("🔄 Processed update:", update)
+        except Exception:
+            time.sleep(1)  # Prevents excessive CPU usage
 
-app.add_handler(CommandHandler("start", start))
+# Start the background processing thread
+update_thread = threading.Thread(target=process_updates, daemon=True)
+update_thread.start()
 
-# ✅ Webhook route: Now Flask is defined before use
+# ✅ Webhook route for Telegram
 @server.route('/webhook', methods=['POST'])
 def webhook():
     """Handle incoming Telegram updates."""
     update = request.get_json()
-    print("Received update:", update)  # Debugging output
-    
+    print("📩 Received update:", update)  # Debugging output
+
     update_obj = Update.de_json(update, app.bot)
-    app.update_queue.put_nowait(update_obj)  # ✅ Correct way for sync functions
-    
+
+    try:
+        app.update_queue.put_nowait(update_obj)
+        print("✅ Update added to queue:", update_obj)
+    except Exception as e:
+        print("⚠️ Error adding update to queue:", e)
+
     return {"status": "ok"}
 
-# ✅ Start Flask server
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    server.run(host="0.0.0.0", port=port)
-
-
-# Define command handlers
+# ✅ Command handlers
 async def start(update: Update, context: CallbackContext):
-    await update.message.reply_text(
-        "🎨 Welcome! Send me a **design style, form, aesthetic approach, material, or functional element**, and I'll generate an improved prompt!"
-    )
+    """Reply when the /start command is sent."""
+    await update.message.reply_text("🎨 Welcome! Send me a **design style, form, aesthetic approach, material, or functional element**, and I'll generate an improved prompt!")
 
 async def generate_prompt(update: Update, context: CallbackContext):
+    """Generate an improved prompt based on user input."""
     user_text = update.message.text.lower().strip()
 
     DESIGN_STYLES = {
@@ -92,10 +101,8 @@ async def generate_prompt(update: Update, context: CallbackContext):
         "carbon fiber": "Features lightweight and strong carbon fiber elements.",
     }
 
-    # Initialize improved prompt
+    # Generate improved prompt
     improved_prompt = ""
-
-    # Match user input with categories
     if user_text in DESIGN_STYLES:
         improved_prompt += f"{DESIGN_STYLES[user_text]} "
     if user_text in FORM_SHAPES:
@@ -107,11 +114,9 @@ async def generate_prompt(update: Update, context: CallbackContext):
     if user_text in MATERIALS:
         improved_prompt += f"{MATERIALS[user_text]} "
 
-    # If no match, suggest improvements
+    # No valid input case
     if not improved_prompt:
-        await update.message.reply_text(
-            "❌ I didn't recognize any design parameters. Try something like 'brutalist', 'round', or 'ergonomic'."
-        )
+        await update.message.reply_text("❌ I didn't recognize any design parameters. Try something like 'brutalist', 'round', or 'ergonomic'.")
         return
 
     # Create a "Copy It" button
@@ -120,12 +125,11 @@ async def generate_prompt(update: Update, context: CallbackContext):
 
     await update.message.reply_text(f"✨ **Updated Prompt:**\n_{improved_prompt}_", reply_markup=reply_markup)
 
-# Add command handlers
+# ✅ Add command handlers
 app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, generate_prompt))
 
-
-# Start Flask server
+# ✅ Start Flask server
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # Render needs this
+    port = int(os.environ.get("PORT", 5000))
     server.run(host="0.0.0.0", port=port)
