@@ -16,8 +16,10 @@ if not TOKEN:
 # ✅ Initialize Flask
 server = Flask(__name__)
 
-# ✅ Initialize Telegram bot
+# ✅ Initialize Telegram bot properly
 app = Application.builder().token(TOKEN).build()
+app.initialize()  # ✅ Ensures the bot is properly initialized
+
 BOT = Bot(token=TOKEN)  # For manual API calls
 
 # ✅ Webhook route: Directly processes updates instead of using a queue
@@ -30,7 +32,7 @@ def webhook():
     update_obj = Update.de_json(update, app.bot)
 
     try:
-        asyncio.run(app.process_update(update_obj))  # ✅ Directly process update
+        asyncio.run(app.process_update(update_obj))  # ✅ Process update properly
         print("✅ Successfully processed update:", update_obj)
     except Exception as e:
         print(f"⚠️ Error processing update: {e}")
@@ -127,6 +129,15 @@ app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, generate_prompt))
 app.add_handler(MessageHandler(filters.COMMAND, unknown))
 
+# ✅ Fallback handler for unknown commands
+async def unknown(update: Update, context: CallbackContext):
+    """Fallback handler for unrecognized commands."""
+    await update.message.reply_text("❌ Unknown command. Try /start.")
+
+# ✅ Add command handlers
+app.add_handler(CommandHandler("start", start))
+app.add_handler(MessageHandler(filters.COMMAND, unknown))
+
 # ✅ Start Flask server
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
@@ -135,3 +146,5 @@ if __name__ == "__main__":
 print("📌 Registered Handlers:")
 for handler in app.handlers[0]:
     print(f"  ➡️ {handler}")
+
+
