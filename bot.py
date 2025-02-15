@@ -1,22 +1,8 @@
 import os
 import logging
 from flask import Flask, request
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import Update
 from telegram.ext import Application, ApplicationBuilder, CommandHandler, MessageHandler, CallbackContext, filters
-import asyncio
-
-@server.route('/webhook', methods=['POST'])
-async def webhook():
-    """Handle incoming Telegram updates."""
-    update = request.get_json()
-    print("Received update:", update)  # Debugging output
-    
-    update_obj = Update.de_json(update, app.bot)
-    
-    # ✅ Fix: Properly await the queue put operation
-    await app.update_queue.put(update_obj)
-    
-    return {"status": "ok"}
 
 # Enable logging
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
@@ -26,13 +12,35 @@ TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TOKEN:
     raise ValueError("TELEGRAM_BOT_TOKEN is missing. Set it in environment variables.")
 
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # Your Render service URL
+# ✅ First, initialize Flask BEFORE using it
+server = Flask(__name__)  # Define Flask app here
 
-# Initialize Flask
-server = Flask(__name__)
-
-# Initialize Telegram bot application
+# ✅ Then initialize the Telegram bot
 app = Application.builder().token(TOKEN).build()
+
+# Command handlers
+async def start(update: Update, context: CallbackContext):
+    await update.message.reply_text("Hello! Your bot is working!")
+
+app.add_handler(CommandHandler("start", start))
+
+# ✅ Webhook route: Now Flask is defined before use
+@server.route('/webhook', methods=['POST'])
+async def webhook():
+    """Handle incoming Telegram updates."""
+    update = request.get_json()
+    print("Received update:", update)  # Debugging output
+    
+    update_obj = Update.de_json(update, app.bot)
+    await app.update_queue.put(update_obj)  # Corrected async issue
+    
+    return {"status": "ok"}
+
+# ✅ Start Flask server
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    server.run(host="0.0.0.0", port=port)
+
 
 # Define command handlers
 async def start(update: Update, context: CallbackContext):
