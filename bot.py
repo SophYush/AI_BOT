@@ -33,22 +33,21 @@ def process_updates():
     """Continuously process updates from the queue."""
     while True:
         try:
-            update = update_queue.get(block=True)  # ✅ Use blocking get()
+            update = update_queue.get(block=True)  # ✅ Blocking get() to avoid empty queue errors
             print("🔄 Processing update:", update)
 
             if not update.message:
                 print("⚠️ Update has no message. Skipping...")
                 continue
 
-            # ✅ Print full update object for debugging
-            print(f"🧐 Full update object: {update.to_dict()}")
+            # ✅ Debugging: Print if an update is being processed
+            print(f"🧐 Processing update: {update.to_dict()}")
 
-            app.process_update(update)
+            app.process_update(update)  # ✅ This should trigger the bot to reply
             print("✅ Successfully processed update:", update)
         except Exception as e:
             print(f"⚠️ Error processing update: {e}")
-            print(traceback.format_exc())
-            time.sleep(1)
+            time.sleep(1)  # Prevent excessive CPU usage
 
 # Start the background processing thread
 update_thread = threading.Thread(target=process_updates, daemon=True)
