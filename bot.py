@@ -2,7 +2,6 @@ import os
 import logging
 import asyncio
 from flask import Flask, request
-from flask import Flask, request
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, Bot
 from telegram.ext import Application, ApplicationBuilder, CommandHandler, MessageHandler, CallbackContext, filters
 
@@ -17,11 +16,11 @@ if not TOKEN:
 # ✅ Initialize Flask
 server = Flask(__name__)
 
-# ✅ Initialize Telegram bot
+# ✅ Initialize Telegram bot **(Properly)**
 app = Application.builder().token(TOKEN).build()
-BOT = Bot(token=TOKEN)  # For manual API calls
+BOT = Bot(token=TOKEN)
 
-# ✅ Proper Webhook Route: Uses `ensure_sync()`
+# ✅ Proper Webhook Route: **Ensure the bot is initialized before processing updates**
 @server.route('/webhook', methods=['POST'])
 def webhook():
     """Handle incoming Telegram updates synchronously."""
@@ -31,7 +30,8 @@ def webhook():
     update_obj = Update.de_json(update, app.bot)
 
     try:
-        server.ensure_sync(app.process_update)(update_obj)  # ✅ Correct way to process updates
+        app.initialize()  # ✅ Ensure the bot is initialized
+        app.process_update(update_obj)  # ✅ Correct way to process updates
         print("✅ Successfully processed update:", update_obj)
     except Exception as e:
         print(f"⚠️ Error processing update: {e}")
@@ -41,13 +41,13 @@ def webhook():
 # ✅ Command Handlers
 async def start(update: Update, context: CallbackContext):
     """Reply when the /start command is sent."""
-    print("🚀 /start command received!")  # ✅ Debugging log
+    print("🚀 /start command received!")
 
     chat_id = update.message.chat_id
-    print(f"🧐 Chat ID: {chat_id}")  # ✅ Debugging: Print chat ID
+    print(f"🧐 Chat ID: {chat_id}")
 
     await update.message.reply_text("🎨 Welcome! Your bot is working!")
-    print("✅ Reply sent!")  # ✅ Confirm that the reply is sent
+    print("✅ Reply sent!")
 
 async def generate_prompt(update: Update, context: CallbackContext):
     """Generate an improved prompt based on user input."""
@@ -132,7 +132,7 @@ app.add_handler(MessageHandler(filters.COMMAND, unknown))
 async def main():
     """Starts the bot properly."""
     print("🚀 Bot is starting...")
-    await app.initialize()
+    await app.initialize()  # ✅ Ensure initialization before updates
     await app.start()
     print("✅ Bot is running!")
 
