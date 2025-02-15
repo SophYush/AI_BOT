@@ -5,7 +5,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackContext, filters
 
 # Enable logging
-logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
                     
 # Load bot token from Render environment variables
 TOKEN = os.getenv("8198216364:AAE835sPmDZatyFwSNC0rUc9YJaB1UEZvrs")
