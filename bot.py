@@ -29,6 +29,7 @@ BOT = Bot(token=TOKEN)  # For manual API calls
 update_queue = queue.Queue()
 
 import asyncio
+import traceback
 from telegram import Bot
 
 BOT = Bot(token=TOKEN)
@@ -47,16 +48,23 @@ def process_updates():
                 print("⚠️ Update has no message. Skipping...")
                 continue
 
-            # ✅ Manually send a response to Telegram for debugging
+            # ✅ Print the update details
+            print(f"🧐 Full update object: {update.to_dict()}")
+
+            # ✅ Send a test message to confirm Telegram API is working
             chat_id = update.message.chat_id
-            BOT.send_message(chat_id=chat_id, text="✅ This is a test response from the bot!")
+            BOT.send_message(chat_id=chat_id, text="✅ Test: This message confirms processing works!")
             print(f"📤 Sent test message to {chat_id}")
 
+            # ✅ Process update (ensure handlers are called)
             loop.run_until_complete(app.process_update(update))
             print("✅ Successfully processed update:", update)
+
         except Exception as e:
             print(f"⚠️ Error processing update: {e}")
+            print(traceback.format_exc())  # Print full error traceback
             time.sleep(1)
+
 
 
 # Start the background processing thread
@@ -84,10 +92,10 @@ def webhook():
 async def start(update: Update, context: CallbackContext):
     """Reply when the /start command is sent."""
     print("🚀 /start command received!")  # ✅ Debugging log
-    
+
     chat_id = update.message.chat_id
-    print(f"🧐 Chat ID: {chat_id}")  # ✅ Print chat ID for debugging
-    
+    print(f"🧐 Chat ID: {chat_id}")  # ✅ Debugging: Print chat ID
+
     await update.message.reply_text("🎨 Welcome! Your bot is working!")
     print("✅ Reply sent!")  # ✅ Confirm that the reply is sent
 
