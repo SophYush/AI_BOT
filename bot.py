@@ -28,26 +28,28 @@ BOT = Bot(token=TOKEN)  # For manual API calls
 # ✅ Replace `asyncio.Queue` with a standard queue
 update_queue = queue.Queue()
 
-# ✅ Background thread to process updates
+import asyncio
+
 def process_updates():
     """Continuously process updates from the queue."""
+    loop = asyncio.new_event_loop()  # ✅ Force a new event loop
+    asyncio.set_event_loop(loop)
+
     while True:
         try:
-            update = update_queue.get(block=True)  # ✅ Blocking get() to avoid empty queue errors
+            update = update_queue.get(block=True)
             print("🔄 Processing update:", update)
 
             if not update.message:
                 print("⚠️ Update has no message. Skipping...")
                 continue
 
-            # ✅ Debugging: Print if an update is being processed
-            print(f"🧐 Processing update: {update.to_dict()}")
-
-            app.process_update(update)  # ✅ This should trigger the bot to reply
+            loop.run_until_complete(app.process_update(update))  # ✅ Ensures it runs in an async loop
             print("✅ Successfully processed update:", update)
         except Exception as e:
             print(f"⚠️ Error processing update: {e}")
-            time.sleep(1)  # Prevent excessive CPU usage
+            time.sleep(1)
+
 
 # Start the background processing thread
 update_thread = threading.Thread(target=process_updates, daemon=True)
@@ -79,6 +81,7 @@ async def start(update: Update, context: CallbackContext):
 async def generate_prompt(update: Update, context: CallbackContext):
     """Generate an improved prompt based on user input."""
     user_text = update.message.text.lower().strip()
+
 
     DESIGN_STYLES = {
         "modern": "A modern product with sleek surfaces, minimal detailing, and a futuristic look.",
@@ -159,3 +162,9 @@ app.add_handler(MessageHandler(filters.COMMAND, unknown))
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     server.run(host="0.0.0.0", port=port)
+
+print("📌 Registered Handlers:")
+for handler in app.handlers[0]:
+    print(f"  ➡️ {handler}")
+
+
