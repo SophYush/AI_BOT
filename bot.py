@@ -20,15 +20,18 @@ server = Flask(__name__)
 # ✅ Initialize Telegram bot
 app = Application.builder().token(TOKEN).build()
 
-# ✅ Background thread to process updates
 def process_updates():
+    """Continuously process updates from the queue."""
     while True:
         try:
             update = app.update_queue.get_nowait()
+            print("🔄 Processing update:", update)
             app.process_update(update)
-            print("🔄 Processed update:", update)
-        except Exception:
+            print("✅ Successfully processed update:", update)
+        except Exception as e:
+            print("⚠️ Error processing update:", e)
             time.sleep(1)  # Prevents excessive CPU usage
+
 
 # Start the background processing thread
 update_thread = threading.Thread(target=process_updates, daemon=True)
@@ -53,7 +56,7 @@ def webhook():
 
 # ✅ Command handlers
 async def start(update: Update, context: CallbackContext):
-    """Reply when the /start command is sent."""
+    print("🚀 /start command received!")  # Debugging log
     await update.message.reply_text("🎨 Welcome! Send me a **design style, form, aesthetic approach, material, or functional element**, and I'll generate an improved prompt!")
 
 async def generate_prompt(update: Update, context: CallbackContext):
