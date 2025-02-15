@@ -2,6 +2,7 @@ import os
 import logging
 import asyncio
 from flask import Flask, request
+from flask import Flask, request
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, Bot
 from telegram.ext import Application, ApplicationBuilder, CommandHandler, MessageHandler, CallbackContext, filters
 
@@ -20,7 +21,7 @@ server = Flask(__name__)
 app = Application.builder().token(TOKEN).build()
 BOT = Bot(token=TOKEN)  # For manual API calls
 
-# ✅ Webhook route: Directly processes updates
+# ✅ Proper Webhook Route: Uses `ensure_sync()`
 @server.route('/webhook', methods=['POST'])
 def webhook():
     """Handle incoming Telegram updates synchronously."""
@@ -30,13 +31,12 @@ def webhook():
     update_obj = Update.de_json(update, app.bot)
 
     try:
-        asyncio.run(app.process_update(update_obj))  # ✅ Convert async function to sync
+        server.ensure_sync(app.process_update)(update_obj)  # ✅ Correct way to process updates
         print("✅ Successfully processed update:", update_obj)
     except Exception as e:
         print(f"⚠️ Error processing update: {e}")
 
     return {"status": "ok"}
-
 
 # ✅ Command Handlers
 async def start(update: Update, context: CallbackContext):
