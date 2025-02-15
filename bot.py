@@ -16,15 +16,13 @@ if not TOKEN:
 # ✅ Initialize Flask
 server = Flask(__name__)
 
-# ✅ Initialize Telegram bot properly
+# ✅ Initialize Telegram bot
 app = Application.builder().token(TOKEN).build()
-app.initialize()  # ✅ Ensures the bot is properly initialized
-
 BOT = Bot(token=TOKEN)  # For manual API calls
 
-# ✅ Webhook route: Directly processes updates instead of using a queue
+# ✅ Webhook route: Directly processes updates
 @server.route('/webhook', methods=['POST'])
-def webhook():
+async def webhook():
     """Handle incoming Telegram updates."""
     update = request.get_json()
     print("📩 Received update:", update)
@@ -32,7 +30,7 @@ def webhook():
     update_obj = Update.de_json(update, app.bot)
 
     try:
-        asyncio.run(app.process_update(update_obj))  # ✅ Process update properly
+        await app.process_update(update_obj)  # ✅ Process update properly
         print("✅ Successfully processed update:", update_obj)
     except Exception as e:
         print(f"⚠️ Error processing update: {e}")
@@ -129,22 +127,21 @@ app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, generate_prompt))
 app.add_handler(MessageHandler(filters.COMMAND, unknown))
 
-# ✅ Fallback handler for unknown commands
-async def unknown(update: Update, context: CallbackContext):
-    """Fallback handler for unrecognized commands."""
-    await update.message.reply_text("❌ Unknown command. Try /start.")
+# ✅ Start the bot properly
+async def main():
+    """Starts the bot properly."""
+    print("🚀 Bot is starting...")
+    await app.initialize()
+    await app.start()
+    print("✅ Bot is running!")
 
-# ✅ Add command handlers
-app.add_handler(CommandHandler("start", start))
-app.add_handler(MessageHandler(filters.COMMAND, unknown))
-
-# ✅ Start Flask server
-if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     server.run(host="0.0.0.0", port=port)
+
+# ✅ Run the bot
+if __name__ == "__main__":
+    asyncio.run(main())  # ✅ Run the bot correctly with async
 
 print("📌 Registered Handlers:")
 for handler in app.handlers[0]:
     print(f"  ➡️ {handler}")
-
-
