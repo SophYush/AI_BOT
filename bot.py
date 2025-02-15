@@ -1,80 +1,74 @@
 import os
 import logging
 from flask import Flask, request
-from telegram import Update
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Application, ApplicationBuilder, CommandHandler, MessageHandler, CallbackContext, filters
 
 # Enable logging
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
-                    
-# Load bot token from Render environment variables
-import os
 
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")  # Read token from environment variable
-
+# Load bot token from environment variables
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TOKEN:
     raise ValueError("TELEGRAM_BOT_TOKEN is missing. Set it in environment variables.")
 
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")   # Your Render service URL
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # Your Render service URL
 
-# Create bot application
-app = Application.builder().token(TOKEN).build()
-
-# Flask app
+# Initialize Flask
 server = Flask(__name__)
 
+# Initialize Telegram bot application
+app = Application.builder().token(TOKEN).build()
 
-# Define design parameters
-DESIGN_STYLES = {
-    "modern": "A modern product with sleek surfaces, minimal detailing, and a futuristic look.",
-    "minimalist": "A minimalist design featuring clean lines, a monochrome color scheme, and a functional aesthetic.",
-    "futuristic": "A futuristic concept with smooth, curved surfaces, glowing neon elements, and advanced materials.",
-    "brutalist": "A Brutalist design with sharp, angular forms, raw concrete textures, and bold geometric structures.",
-    "industrial": "An industrial-style product using exposed metal elements, rugged textures, and a mechanical aesthetic.",
-    "organic": "An organic-shaped design with smooth, flowing curves inspired by nature.",
-    "art-deco": "An Art-Deco inspired piece with luxurious metallic accents, bold geometric patterns, and vintage elegance.",
-}
-
-FORM_SHAPES = {
-    "round": "A round and smooth shape with soft transitions.",
-    "rectangular": "A rectangular, boxy form with precise edges.",
-    "cylindrical": "A cylindrical body with a continuous, sleek surface.",
-    "geometric": "A highly geometric structure with defined angles and sharp edges.",
-    "organic": "An organic, free-flowing shape inspired by nature.",
-    "asymmetrical": "An asymmetrical composition with dynamic balance.",
-}
-
-AESTHETIC_APPROACHES = {
-    "bold": "A bold design that stands out with high contrast and powerful forms.",
-    "symmetrical": "A perfectly symmetrical design with balanced proportions.",
-    "minimal": "A minimalist aesthetic with reduced detailing and maximum simplicity.",
-    "futuristic": "A futuristic look with clean lines and tech-inspired features.",
-    "rustic": "A rustic aesthetic with natural textures and raw materials.",
-}
-
-FUNCTIONAL_ELEMENTS = {
-    "buttons": "Incorporates intuitive buttons for easy interaction.",
-    "touch-sensitive": "Features a modern, touch-sensitive interface.",
-    "ergonomic": "Designed with ergonomic grip and usability in mind.",
-    "modular": "A modular design allowing interchangeable components.",
-}
-
-MATERIALS = {
-    "wood": "Made from finely polished wood with natural grain details.",
-    "metal": "Constructed from brushed aluminum for a premium feel.",
-    "glass": "Designed with transparent or frosted glass surfaces.",
-    "carbon fiber": "Features lightweight and strong carbon fiber elements.",
-}
-
-# Start command
+# Define command handlers
 async def start(update: Update, context: CallbackContext):
     await update.message.reply_text(
         "🎨 Welcome! Send me a **design style, form, aesthetic approach, material, or functional element**, and I'll generate an improved prompt!"
     )
 
-# Handle user messages and generate improved prompts
 async def generate_prompt(update: Update, context: CallbackContext):
     user_text = update.message.text.lower().strip()
+
+    DESIGN_STYLES = {
+        "modern": "A modern product with sleek surfaces, minimal detailing, and a futuristic look.",
+        "minimalist": "A minimalist design featuring clean lines, a monochrome color scheme, and a functional aesthetic.",
+        "futuristic": "A futuristic concept with smooth, curved surfaces, glowing neon elements, and advanced materials.",
+        "brutalist": "A Brutalist design with sharp, angular forms, raw concrete textures, and bold geometric structures.",
+        "industrial": "An industrial-style product using exposed metal elements, rugged textures, and a mechanical aesthetic.",
+        "organic": "An organic-shaped design with smooth, flowing curves inspired by nature.",
+        "art-deco": "An Art-Deco inspired piece with luxurious metallic accents, bold geometric patterns, and vintage elegance.",
+    }
+
+    FORM_SHAPES = {
+        "round": "A round and smooth shape with soft transitions.",
+        "rectangular": "A rectangular, boxy form with precise edges.",
+        "cylindrical": "A cylindrical body with a continuous, sleek surface.",
+        "geometric": "A highly geometric structure with defined angles and sharp edges.",
+        "organic": "An organic, free-flowing shape inspired by nature.",
+        "asymmetrical": "An asymmetrical composition with dynamic balance.",
+    }
+
+    AESTHETIC_APPROACHES = {
+        "bold": "A bold design that stands out with high contrast and powerful forms.",
+        "symmetrical": "A perfectly symmetrical design with balanced proportions.",
+        "minimal": "A minimalist aesthetic with reduced detailing and maximum simplicity.",
+        "futuristic": "A futuristic look with clean lines and tech-inspired features.",
+        "rustic": "A rustic aesthetic with natural textures and raw materials.",
+    }
+
+    FUNCTIONAL_ELEMENTS = {
+        "buttons": "Incorporates intuitive buttons for easy interaction.",
+        "touch-sensitive": "Features a modern, touch-sensitive interface.",
+        "ergonomic": "Designed with ergonomic grip and usability in mind.",
+        "modular": "A modular design allowing interchangeable components.",
+    }
+
+    MATERIALS = {
+        "wood": "Made from finely polished wood with natural grain details.",
+        "metal": "Constructed from brushed aluminum for a premium feel.",
+        "glass": "Designed with transparent or frosted glass surfaces.",
+        "carbon fiber": "Features lightweight and strong carbon fiber elements.",
+    }
 
     # Initialize improved prompt
     improved_prompt = ""
@@ -104,14 +98,19 @@ async def generate_prompt(update: Update, context: CallbackContext):
 
     await update.message.reply_text(f"✨ **Updated Prompt:**\n_{improved_prompt}_", reply_markup=reply_markup)
 
-# Initialize the bot
-app = ApplicationBuilder().token(TOKEN).build()
-
 # Add command handlers
 app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, generate_prompt))
 
-# Run the bot
+# Webhook route for Telegram
+@server.route('/webhook', methods=['POST'])
+def webhook():
+    """Handle incoming Telegram updates."""
+    update = Update.de_json(request.get_json(), app.bot)
+    app.update_queue.put(update)
+    return {"status": "ok"}
+
+# Start Flask server
 if __name__ == "__main__":
-    print("Bot is running...")
-    app.run_polling()
+    port = int(os.environ.get("PORT", 5000))  # Render needs this
+    server.run(host="0.0.0.0", port=port)
