@@ -29,10 +29,13 @@ BOT = Bot(token=TOKEN)  # For manual API calls
 update_queue = queue.Queue()
 
 import asyncio
+from telegram import Bot
+
+BOT = Bot(token=TOKEN)
 
 def process_updates():
     """Continuously process updates from the queue."""
-    loop = asyncio.new_event_loop()  # ✅ Force a new event loop
+    loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
     while True:
@@ -44,7 +47,12 @@ def process_updates():
                 print("⚠️ Update has no message. Skipping...")
                 continue
 
-            loop.run_until_complete(app.process_update(update))  # ✅ Ensures it runs in an async loop
+            # ✅ Manually send a response to Telegram for debugging
+            chat_id = update.message.chat_id
+            BOT.send_message(chat_id=chat_id, text="✅ This is a test response from the bot!")
+            print(f"📤 Sent test message to {chat_id}")
+
+            loop.run_until_complete(app.process_update(update))
             print("✅ Successfully processed update:", update)
         except Exception as e:
             print(f"⚠️ Error processing update: {e}")
@@ -75,8 +83,13 @@ def webhook():
 # ✅ Command handlers
 async def start(update: Update, context: CallbackContext):
     """Reply when the /start command is sent."""
-    print("🚀 /start command received!")  # Debugging log
-    await update.message.reply_text("🎨 Welcome! Send me a **design style, form, aesthetic approach, material, or functional element**, and I'll generate an improved prompt!")
+    print("🚀 /start command received!")  # ✅ Debugging log
+    
+    chat_id = update.message.chat_id
+    print(f"🧐 Chat ID: {chat_id}")  # ✅ Print chat ID for debugging
+    
+    await update.message.reply_text("🎨 Welcome! Your bot is working!")
+    print("✅ Reply sent!")  # ✅ Confirm that the reply is sent
 
 async def generate_prompt(update: Update, context: CallbackContext):
     """Generate an improved prompt based on user input."""
