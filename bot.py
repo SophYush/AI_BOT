@@ -1,16 +1,11 @@
-import os  # ✅ Ensure this is the first import
+import os
 import logging
-import queue
-import threading
-import time
-import traceback
+import asyncio
 from flask import Flask, request
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, Bot
 from telegram.ext import Application, ApplicationBuilder, CommandHandler, MessageHandler, CallbackContext, filters
 
-
 # Enable logging
-import logging
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 
 # Load bot token from environment variables
@@ -18,77 +13,31 @@ TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TOKEN:
     raise ValueError("TELEGRAM_BOT_TOKEN is missing. Set it in environment variables.")
 
-# ✅ Initialize Flask before using it
+# ✅ Initialize Flask
 server = Flask(__name__)
 
 # ✅ Initialize Telegram bot
 app = Application.builder().token(TOKEN).build()
 BOT = Bot(token=TOKEN)  # For manual API calls
 
-# ✅ Replace `asyncio.Queue` with a standard queue
-update_queue = queue.Queue()
-
-import asyncio
-import traceback
-from telegram import Bot
-
-BOT = Bot(token=TOKEN)
-
-def process_updates():
-    """Continuously process updates from the queue."""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    while True:
-        try:
-            update = update_queue.get(block=True)
-            print("🔄 Processing update:", update)
-
-            if not update.message:
-                print("⚠️ Update has no message. Skipping...")
-                continue
-
-            # ✅ Print the update details
-            print(f"🧐 Full update object: {update.to_dict()}")
-
-            # ✅ Send a test message to confirm Telegram API is working
-            chat_id = update.message.chat_id
-            BOT.send_message(chat_id=chat_id, text="✅ Test: This message confirms processing works!")
-            print(f"📤 Sent test message to {chat_id}")
-
-            # ✅ Process update (ensure handlers are called)
-            loop.run_until_complete(app.process_update(update))
-            print("✅ Successfully processed update:", update)
-
-        except Exception as e:
-            print(f"⚠️ Error processing update: {e}")
-            print(traceback.format_exc())  # Print full error traceback
-            time.sleep(1)
-
-
-
-# Start the background processing thread
-update_thread = threading.Thread(target=process_updates, daemon=True)
-update_thread.start()
-
-# ✅ Webhook route for Telegram
+# ✅ Webhook route: Directly processes updates instead of using a queue
 @server.route('/webhook', methods=['POST'])
 def webhook():
     """Handle incoming Telegram updates."""
     update = request.get_json()
-    print("📩 Received update:", update)  # Debugging output
+    print("📩 Received update:", update)
 
     update_obj = Update.de_json(update, app.bot)
 
     try:
-        update_queue.put(update_obj)  # ✅ Use standard queue put()
-        print("✅ Update added to queue:", update_obj)
+        asyncio.run(app.process_update(update_obj))  # ✅ Directly process update
+        print("✅ Successfully processed update:", update_obj)
     except Exception as e:
-        print(f"⚠️ Error adding update to queue: {e}")
+        print(f"⚠️ Error processing update: {e}")
 
     return {"status": "ok"}
 
-# ✅ Command handlers
+# ✅ Command Handlers
 async def start(update: Update, context: CallbackContext):
     """Reply when the /start command is sent."""
     print("🚀 /start command received!")  # ✅ Debugging log
@@ -102,7 +51,6 @@ async def start(update: Update, context: CallbackContext):
 async def generate_prompt(update: Update, context: CallbackContext):
     """Generate an improved prompt based on user input."""
     user_text = update.message.text.lower().strip()
-
 
     DESIGN_STYLES = {
         "modern": "A modern product with sleek surfaces, minimal detailing, and a futuristic look.",
@@ -187,5 +135,3 @@ if __name__ == "__main__":
 print("📌 Registered Handlers:")
 for handler in app.handlers[0]:
     print(f"  ➡️ {handler}")
-
-
