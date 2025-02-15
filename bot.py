@@ -22,20 +22,21 @@ BOT = Bot(token=TOKEN)  # For manual API calls
 
 # ✅ Webhook route: Directly processes updates
 @server.route('/webhook', methods=['POST'])
-async def webhook():
-    """Handle incoming Telegram updates."""
+def webhook():
+    """Handle incoming Telegram updates synchronously."""
     update = request.get_json()
     print("📩 Received update:", update)
 
     update_obj = Update.de_json(update, app.bot)
 
     try:
-        await app.process_update(update_obj)  # ✅ Process update properly
+        asyncio.run(app.process_update(update_obj))  # ✅ Convert async function to sync
         print("✅ Successfully processed update:", update_obj)
     except Exception as e:
         print(f"⚠️ Error processing update: {e}")
 
     return {"status": "ok"}
+
 
 # ✅ Command Handlers
 async def start(update: Update, context: CallbackContext):
