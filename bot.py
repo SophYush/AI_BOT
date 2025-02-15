@@ -26,13 +26,13 @@ app.add_handler(CommandHandler("start", start))
 
 # ✅ Webhook route: Now Flask is defined before use
 @server.route('/webhook', methods=['POST'])
-async def webhook():
+def webhook():
     """Handle incoming Telegram updates."""
     update = request.get_json()
     print("Received update:", update)  # Debugging output
     
     update_obj = Update.de_json(update, app.bot)
-    await app.update_queue.put(update_obj)  # Corrected async issue
+    app.update_queue.put_nowait(update_obj)  # ✅ Correct way for sync functions
     
     return {"status": "ok"}
 
