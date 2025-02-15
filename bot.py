@@ -1,12 +1,13 @@
-import os
-import logging
+import queue
 import threading
 import time
+import traceback
 from flask import Flask, request
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, Bot
 from telegram.ext import Application, ApplicationBuilder, CommandHandler, MessageHandler, CallbackContext, filters
 
 # Enable logging
+import logging
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 
 # Load bot token from environment variables
@@ -19,15 +20,17 @@ server = Flask(__name__)
 
 # ✅ Initialize Telegram bot
 app = Application.builder().token(TOKEN).build()
-BOT = Bot(token=TOKEN)  # Manual API call bot
+BOT = Bot(token=TOKEN)  # For manual API calls
 
-import traceback
+# ✅ Replace `asyncio.Queue` with a standard queue
+update_queue = queue.Queue()
 
+# ✅ Background thread to process updates
 def process_updates():
     """Continuously process updates from the queue."""
     while True:
         try:
-            update = app.update_queue.get_nowait()
+            update = update_queue.get(block=True)  # ✅ Use blocking get()
             print("🔄 Processing update:", update)
 
             if not update.message:
@@ -41,9 +44,8 @@ def process_updates():
             print("✅ Successfully processed update:", update)
         except Exception as e:
             print(f"⚠️ Error processing update: {e}")
-            print(traceback.format_exc())  # 🔹 Print the full error traceback
+            print(traceback.format_exc())
             time.sleep(1)
-
 
 # Start the background processing thread
 update_thread = threading.Thread(target=process_updates, daemon=True)
@@ -59,10 +61,10 @@ def webhook():
     update_obj = Update.de_json(update, app.bot)
 
     try:
-        app.update_queue.put_nowait(update_obj)
+        update_queue.put(update_obj)  # ✅ Use standard queue put()
         print("✅ Update added to queue:", update_obj)
     except Exception as e:
-        print("⚠️ Error adding update to queue:", e)
+        print(f"⚠️ Error adding update to queue: {e}")
 
     return {"status": "ok"}
 
