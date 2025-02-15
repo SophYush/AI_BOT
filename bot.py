@@ -111,13 +111,6 @@ async def generate_prompt(update: Update, context: CallbackContext):
 app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, generate_prompt))
 
-# Webhook route for Telegram
-@server.route('/webhook', methods=['POST'])
-def webhook():
-    """Handle incoming Telegram updates."""
-    update = Update.de_json(request.get_json(), app.bot)
-    app.update_queue.put(update)
-    return {"status": "ok"}
 
 # Start Flask server
 if __name__ == "__main__":
