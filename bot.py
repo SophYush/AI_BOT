@@ -3,7 +3,7 @@ import logging
 import threading
 import time
 from flask import Flask, request
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, Bot
 from telegram.ext import Application, ApplicationBuilder, CommandHandler, MessageHandler, CallbackContext, filters
 
 # Enable logging
@@ -19,19 +19,28 @@ server = Flask(__name__)
 
 # ✅ Initialize Telegram bot
 app = Application.builder().token(TOKEN).build()
+BOT = Bot(token=TOKEN)  # Manual API call bot
 
+# ✅ Background thread to process updates
 def process_updates():
     """Continuously process updates from the queue."""
     while True:
         try:
             update = app.update_queue.get_nowait()
             print("🔄 Processing update:", update)
+
+            if not update.message:
+                print("⚠️ Update has no message. Skipping...")
+                continue
+
+            # ✅ Print full update object for debugging
+            print(f"🧐 Full update object: {update.to_dict()}")
+
             app.process_update(update)
             print("✅ Successfully processed update:", update)
         except Exception as e:
-            print("⚠️ Error processing update:", e)
+            print(f"⚠️ Error processing update: {e}")
             time.sleep(1)  # Prevents excessive CPU usage
-
 
 # Start the background processing thread
 update_thread = threading.Thread(target=process_updates, daemon=True)
@@ -56,6 +65,7 @@ def webhook():
 
 # ✅ Command handlers
 async def start(update: Update, context: CallbackContext):
+    """Reply when the /start command is sent."""
     print("🚀 /start command received!")  # Debugging log
     await update.message.reply_text("🎨 Welcome! Send me a **design style, form, aesthetic approach, material, or functional element**, and I'll generate an improved prompt!")
 
@@ -128,9 +138,15 @@ async def generate_prompt(update: Update, context: CallbackContext):
 
     await update.message.reply_text(f"✨ **Updated Prompt:**\n_{improved_prompt}_", reply_markup=reply_markup)
 
+# ✅ Fallback handler for unknown commands
+async def unknown(update: Update, context: CallbackContext):
+    """Fallback handler for unrecognized commands."""
+    await update.message.reply_text("❌ Unknown command. Try /start.")
+
 # ✅ Add command handlers
 app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, generate_prompt))
+app.add_handler(MessageHandler(filters.COMMAND, unknown))
 
 # ✅ Start Flask server
 if __name__ == "__main__":
