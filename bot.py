@@ -3,6 +3,20 @@ import logging
 from flask import Flask, request
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Application, ApplicationBuilder, CommandHandler, MessageHandler, CallbackContext, filters
+import asyncio
+
+@server.route('/webhook', methods=['POST'])
+async def webhook():
+    """Handle incoming Telegram updates."""
+    update = request.get_json()
+    print("Received update:", update)  # Debugging output
+    
+    update_obj = Update.de_json(update, app.bot)
+    
+    # ✅ Fix: Properly await the queue put operation
+    await app.update_queue.put(update_obj)
+    
+    return {"status": "ok"}
 
 # Enable logging
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
@@ -16,15 +30,6 @@ WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # Your Render service URL
 
 # Initialize Flask
 server = Flask(__name__)
-
-@server.route('/webhook', methods=['POST'])
-def webhook():
-    """Handle incoming Telegram updates."""
-    update = request.get_json()
-    print("Received update:", update)  # Debugging output
-    update_obj = Update.de_json(update, app.bot)
-    app.update_queue.put(update_obj)
-    return {"status": "ok"}
 
 # Initialize Telegram bot application
 app = Application.builder().token(TOKEN).build()
