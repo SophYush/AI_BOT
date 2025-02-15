@@ -10,11 +10,12 @@ logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s
 # Load bot token from Render environment variables
 import os
 
-TOKEN = os.getenv(8198216364:AAE835sPmDZatyFwSNC0rUc9YJaB1UEZvrs)
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")  # Read token from environment variable
 
 if not TOKEN:
     raise ValueError("TELEGRAM_BOT_TOKEN is missing. Set it in environment variables.")
-WEBHOOK_URL = os.getenv("https://api.render.com/deploy/srv-cuoc58tds78s738ikk8g?key=MU54-3IE7L4")  # Your Render service URL
+
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")   # Your Render service URL
 
 # Create bot application
 app = Application.builder().token(TOKEN).build()
