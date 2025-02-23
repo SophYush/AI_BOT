@@ -126,20 +126,19 @@ app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, generate_prompt))
 app.add_handler(MessageHandler(filters.COMMAND, unknown))
 
-# ✅ Start the bot properly
 async def main():
     """Starts the bot properly."""
     print("🚀 Bot is starting...")
-    await app.initialize()  # ✅ Ensure initialization before updates
-    # ✅ Add command handlers
-app.add_handler(CommandHandler("start", start))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, generate_prompt))
-app.add_handler(MessageHandler(filters.COMMAND, unknown))
-
-    await app.start()
+    await app.initialize()
+    await app.start()  # ✅ No extra spaces or tabs here
     print("✅ Bot is running!")
 
-    # Run Flask server in a separate thread to avoid blocking asyncio loop
+    # ✅ Add command handlers
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown))
+    app.add_handler(MessageHandler(filters.COMMAND, unknown))
+
+    # Run Flask server in a separate thread
     port = int(os.environ.get("PORT", 5000))
     await asyncio.to_thread(server.run, host="0.0.0.0", port=port)
 
