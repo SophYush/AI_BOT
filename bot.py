@@ -20,23 +20,21 @@ server = Flask(__name__)
 app = Application.builder().token(TOKEN).build()
 BOT = Bot(token=TOKEN)
 
-# ✅ Proper Webhook Route: **Ensure the bot is initialized before processing updates**
 @server.route('/webhook', methods=['POST'])
-def webhook():
-    """Handle incoming Telegram updates synchronously."""
+async def webhook():
+    """Handle incoming Telegram updates asynchronously."""
     update = request.get_json()
     print("📩 Received update:", update)
 
     update_obj = Update.de_json(update, app.bot)
 
     try:
-        app.initialize()  # ✅ Ensure the bot is initialized
-        app.process_update(update_obj)  # ✅ Correct way to process updates
+        await app.process_update(update_obj)  # ✅ Properly await the processing
         print("✅ Successfully processed update:", update_obj)
     except Exception as e:
         print(f"⚠️ Error processing update: {e}")
 
-    return {"status": "ok"}
+    return {"status": "ok"}, 200
 
 # ✅ Command Handlers
 async def start(update: Update, context: CallbackContext):
@@ -133,11 +131,18 @@ async def main():
     """Starts the bot properly."""
     print("🚀 Bot is starting...")
     await app.initialize()  # ✅ Ensure initialization before updates
+    # ✅ Add command handlers
+app.add_handler(CommandHandler("start", start))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, generate_prompt))
+app.add_handler(MessageHandler(filters.COMMAND, unknown))
+
     await app.start()
     print("✅ Bot is running!")
 
+    # Run Flask server in a separate thread to avoid blocking asyncio loop
     port = int(os.environ.get("PORT", 5000))
-    server.run(host="0.0.0.0", port=port)
+    await asyncio.to_thread(server.run, host="0.0.0.0", port=port)
+
 
 # ✅ Run the bot
 if __name__ == "__main__":
