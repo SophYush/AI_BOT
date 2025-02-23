@@ -21,6 +21,7 @@ app = Application.builder().token(TOKEN).build()
 BOT = Bot(token=TOKEN)
 
 @server.route('/webhook', methods=['POST'])
+@server.route('/webhook', methods=['POST'])
 async def webhook():
     """Handle incoming Telegram updates asynchronously."""
     update = request.get_json()
@@ -29,12 +30,14 @@ async def webhook():
     update_obj = Update.de_json(update, app.bot)
 
     try:
-        await app.process_update(update_obj)  # ✅ Properly await the processing
+        # ✅ Process the update directly (no initialize call here)
+        await app.process_update(update_obj)
         print("✅ Successfully processed update:", update_obj)
     except Exception as e:
         print(f"⚠️ Error processing update: {e}")
 
     return {"status": "ok"}, 200
+
 
 # ✅ Command Handlers
 async def start(update: Update, context: CallbackContext):
@@ -129,18 +132,22 @@ app.add_handler(MessageHandler(filters.COMMAND, unknown))
 async def main():
     """Starts the bot properly."""
     print("🚀 Bot is starting...")
+    
+    # ✅ Proper Initialization
     await app.initialize()
-    await app.start()  # ✅ No extra spaces or tabs here
+    await app.start()
+    
     print("✅ Bot is running!")
 
     # ✅ Add command handlers
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, generate_prompt))
     app.add_handler(MessageHandler(filters.COMMAND, unknown))
 
-    # Run Flask server in a separate thread
+    # ✅ Run Flask server asynchronously
     port = int(os.environ.get("PORT", 5000))
     await asyncio.to_thread(server.run, host="0.0.0.0", port=port)
+
 
 
 # ✅ Run the bot
