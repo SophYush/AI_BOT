@@ -3,7 +3,7 @@ import logging
 import asyncio
 from flask import Flask, request
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, Bot
-from telegram.ext import Application, ApplicationBuilder, CommandHandler, MessageHandler, CallbackContext, filters
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackContext, filters
 
 # Enable logging
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
@@ -13,39 +13,36 @@ TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TOKEN:
     raise ValueError("TELEGRAM_BOT_TOKEN is missing. Set it in environment variables.")
 
-# ✅ Initialize Flask
+# Initialize Flask
 server = Flask(__name__)
 
-# ✅ Initialize Telegram bot **(Properly)**
+# Initialize Telegram bot
 app = Application.builder().token(TOKEN).build()
 BOT = Bot(token=TOKEN)
 
-# ✅ Proper Webhook Route: **Ensure the bot is initialized before processing updates**
+# Async webhook handler
 @server.route('/webhook', methods=['POST'])
-def webhook():
-    """Handle incoming Telegram updates synchronously."""
+async def webhook():
+    """Handle incoming Telegram updates asynchronously."""
     update = request.get_json()
     print("📩 Received update:", update)
 
     update_obj = Update.de_json(update, app.bot)
 
     try:
-        app.initialize()  # ✅ Ensure the bot is initialized
-        app.process_update(update_obj)  # ✅ Correct way to process updates
+        await app.process_update(update_obj)  # Properly await update processing
         print("✅ Successfully processed update:", update_obj)
     except Exception as e:
         print(f"⚠️ Error processing update: {e}")
 
     return {"status": "ok"}
 
-# ✅ Command Handlers
+# Command Handlers
 async def start(update: Update, context: CallbackContext):
     """Reply when the /start command is sent."""
     print("🚀 /start command received!")
-
     chat_id = update.message.chat_id
     print(f"🧐 Chat ID: {chat_id}")
-
     await update.message.reply_text("🎨 Welcome! Your bot is working!")
     print("✅ Reply sent!")
 
@@ -118,31 +115,27 @@ async def generate_prompt(update: Update, context: CallbackContext):
 
     await update.message.reply_text(f"✨ **Updated Prompt:**\n_{improved_prompt}_", reply_markup=reply_markup)
 
-# ✅ Fallback handler for unknown commands
+# Fallback handler
 async def unknown(update: Update, context: CallbackContext):
     """Fallback handler for unrecognized commands."""
     await update.message.reply_text("❌ Unknown command. Try /start.")
 
-# ✅ Add command handlers
+# Add command handlers
 app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, generate_prompt))
 app.add_handler(MessageHandler(filters.COMMAND, unknown))
 
-# ✅ Start the bot properly
+# Start the bot properly
 async def main():
     """Starts the bot properly."""
     print("🚀 Bot is starting...")
-    await app.initialize()  # ✅ Ensure initialization before updates
+    await app.initialize()  # Proper initialization
     await app.start()
     print("✅ Bot is running!")
 
     port = int(os.environ.get("PORT", 5000))
-    server.run(host="0.0.0.0", port=port)
+    await asyncio.to_thread(server.run, host="0.0.0.0", port=port)
 
-# ✅ Run the bot
+# Run the bot
 if __name__ == "__main__":
-    asyncio.run(main())  # ✅ Run the bot correctly with async
-
-print("📌 Registered Handlers:")
-for handler in app.handlers[0]:
-    print(f"  ➡️ {handler}")
+    asyncio.run(main())
